@@ -3,7 +3,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search as SearchIcon, Filter, Star, MapPin } from "lucide-react";
+import { Search as SearchIcon, Filter, Star, MapPin, List } from "lucide-react";
+import { MapView } from "@/components/MapView";
 
 const mockSearchResults = [
   {
@@ -40,6 +41,7 @@ const mockSearchResults = [
 
 export default function Search() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState<"map" | "list">("map");
 
   return (
     <div className="h-screen flex flex-col">
@@ -58,58 +60,75 @@ export default function Search() {
           <Button variant="outline" size="icon">
             <Filter className="h-4 w-4" />
           </Button>
+          <Button
+            variant={viewMode === "map" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("map")}
+          >
+            Map
+          </Button>
+          <Button
+            variant={viewMode === "list" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("list")}
+          >
+            <List className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
-      {/* Search Results */}
-      <div className="flex-1 overflow-auto p-4">
-        <div className="max-w-4xl space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">
-              {mockSearchResults.length} properties found
-            </h2>
-            <Button variant="outline" size="sm">
-              Map View
-            </Button>
-          </div>
+      {/* Content */}
+      <div className="flex-1">
+        {viewMode === "map" ? (
+          <MapView className="h-full" />
+        ) : (
+          <div className="h-full overflow-auto p-4">
+            <div className="max-w-4xl space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">
+                  {mockSearchResults.length} properties found
+                </h2>
+              </div>
 
-          {mockSearchResults.map((property) => (
-            <Card key={property.id} className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-lg">{property.name}</CardTitle>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                      <MapPin className="h-3 w-3" />
-                      {property.address}
+              {mockSearchResults.map((property) => (
+                <Card key={property.id} className="hover:shadow-md transition-shadow cursor-pointer">
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-lg">{property.name}</CardTitle>
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                          <MapPin className="h-3 w-3" />
+                          {property.address}
+                        </div>
+                      </div>
+                      <Badge variant="secondary">{property.type}</Badge>
                     </div>
-                  </div>
-                  <Badge variant="secondary">{property.type}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-4 mb-3">
-                  <div className="flex items-center gap-1">
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <span className="font-medium">{property.rating}</span>
-                    <span className="text-sm text-muted-foreground">
-                      ({property.reviewCount} reviews)
-                    </span>
-                  </div>
-                  <span className="font-semibold text-primary">{property.price}</span>
-                </div>
-                
-                <div className="flex flex-wrap gap-2">
-                  {property.highlights.map((highlight, index) => (
-                    <Badge key={index} variant="outline" className="text-xs">
-                      {highlight}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-4 mb-3">
+                      <div className="flex items-center gap-1">
+                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                        <span className="font-medium">{property.rating}</span>
+                        <span className="text-sm text-muted-foreground">
+                          ({property.reviewCount} reviews)
+                        </span>
+                      </div>
+                      <span className="font-semibold text-primary">{property.price}</span>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-2">
+                      {property.highlights.map((highlight, index) => (
+                        <Badge key={index} variant="outline" className="text-xs">
+                          {highlight}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
