@@ -63,16 +63,19 @@ export default function Watchlist() {
                         {property.address}
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Badge 
-                        variant={property.status === "Available" ? "default" : "secondary"}
-                      >
-                        {property.status}
-                      </Badge>
-                      <Button variant="ghost" size="icon" className="text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                     <div className="flex gap-2">
+                       <Badge 
+                         variant={property.status === "Available" ? "default" : "secondary"}
+                       >
+                         {property.status}
+                       </Badge>
+                       <Button variant="ghost" size="icon" className="text-red-500">
+                         <Heart className="h-4 w-4 fill-red-500" />
+                       </Button>
+                       <Button variant="ghost" size="icon" className="text-destructive">
+                         <Trash2 className="h-4 w-4" />
+                       </Button>
+                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
