@@ -183,9 +183,18 @@ interface MapViewProps {
 export function MapView({ className }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
-  const [apiKey, setApiKey] = useState<string>('');
+  const [apiKey, setApiKey] = useState<string>(() => {
+    // Load saved API key from localStorage
+    return localStorage.getItem('googleMapsApiKey') || '';
+  });
   const [selectedProperty, setSelectedProperty] = useState<typeof mockProperties[0] | null>(null);
   const markersRef = useRef<any[]>([]);
+
+  // Save API key to localStorage when it changes
+  const handleApiKeySubmit = (newApiKey: string) => {
+    localStorage.setItem('googleMapsApiKey', newApiKey);
+    setApiKey(newApiKey);
+  };
 
   useEffect(() => {
     if (!mapContainer.current || !apiKey) return;
@@ -296,7 +305,7 @@ export function MapView({ className }: MapViewProps) {
     return (
       <div className={`relative ${className}`}>
         <div className="w-full h-full bg-muted flex items-center justify-center">
-          <GoogleMapsTokenInput onTokenSubmit={setApiKey} />
+          <GoogleMapsTokenInput onTokenSubmit={handleApiKeySubmit} />
         </div>
       </div>
     );
