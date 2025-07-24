@@ -1,37 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { MapPin, Star, Search, Filter, Heart, Share2 } from 'lucide-react';
-
-// Temporary input for Mapbox token - in production this would come from Supabase
-const MapboxTokenInput = ({ onTokenSubmit }: { onTokenSubmit: (token: string) => void }) => {
-  const [token, setToken] = useState('');
-
-  return (
-    <Card className="absolute top-4 left-4 z-10 w-80">
-      <CardContent className="p-4">
-        <h3 className="font-semibold mb-2">Enter Mapbox Token</h3>
-        <p className="text-sm text-muted-foreground mb-3">
-          Get your token from <a href="https://mapbox.com/" target="_blank" rel="noopener noreferrer" className="text-primary underline">mapbox.com</a>
-        </p>
-        <div className="flex gap-2">
-          <Input
-            type="password"
-            placeholder="pk.eyJ1..."
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-          />
-          <Button onClick={() => onTokenSubmit(token)} disabled={!token}>
-            Load Map
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
 
 // Mock property data with more realistic spread
 const mockProperties = [
@@ -103,7 +76,7 @@ const mockProperties = [
   }
 ];
 
-// Airbnb-style search bar component
+// Search bar component
 const SearchOverlay = () => (
   <Card className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 w-96 shadow-lg">
     <CardContent className="p-3">
@@ -123,18 +96,18 @@ const SearchOverlay = () => (
   </Card>
 );
 
-// Custom marker component for Airbnb-style price markers
+// Custom marker creation for price circles
 const createPriceMarker = (price: string, isSelected: boolean = false) => {
-  const el = document.createElement('div');
-  el.className = `
-    px-2 py-1 rounded-full text-sm font-semibold cursor-pointer transition-all duration-200 shadow-md
-    ${isSelected 
-      ? 'bg-foreground text-background scale-110 z-10' 
-      : 'bg-background text-foreground border border-border hover:scale-105'
-    }
-  `;
-  el.innerHTML = price;
-  return el;
+  return L.divIcon({
+    html: `<div class="px-3 py-1 rounded-full text-sm font-semibold cursor-pointer transition-all duration-200 shadow-md border-2 ${
+      isSelected 
+        ? 'bg-primary text-primary-foreground border-primary scale-110' 
+        : 'bg-background text-foreground border-border hover:scale-105'
+    }">${price}</div>`,
+    className: 'custom-div-icon',
+    iconSize: [60, 30],
+    iconAnchor: [30, 15]
+  });
 };
 
 interface PropertyPopupProps {
@@ -197,95 +170,63 @@ interface MapViewProps {
 
 export function MapView({ className }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const [mapboxToken, setMapboxToken] = useState<string>('');
+  const map = useRef<L.Map | null>(null);
   const [selectedProperty, setSelectedProperty] = useState<typeof mockProperties[0] | null>(null);
+  const markersRef = useRef<L.Marker[]>([]);
 
   useEffect(() => {
-    if (!mapContainer.current || !mapboxToken) return;
+    if (!mapContainer.current) return;
 
-    // Initialize map
-    mapboxgl.accessToken = mapboxToken;
-    
-    try {
-      map.current = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/light-v11',
-        center: [-74.006, 40.7128], // NYC coordinates
-        zoom: 12,
-      });
+    // Initialize Leaflet map
+    map.current = L.map(mapContainer.current).setView([40.7128, -74.006], 12);
 
-      // Add navigation controls
-      map.current.addControl(
-        new mapboxgl.NavigationControl(),
-        'top-right'
-      );
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map.current);
 
-      // Add property markers with custom price markers
-      const markers: mapboxgl.Marker[] = [];
-      mockProperties.forEach((property) => {
-        const markerElement = createPriceMarker(property.price, false);
+    // Add property markers
+    mockProperties.forEach((property) => {
+      const marker = L.marker([property.coordinates[1], property.coordinates[0]], {
+        icon: createPriceMarker(property.price, false)
+      }).addTo(map.current!);
+
+      markersRef.current.push(marker);
+
+      // Add click listener to marker
+      marker.on('click', (e) => {
+        e.originalEvent.stopPropagation();
+        setSelectedProperty(property);
         
-        const marker = new mapboxgl.Marker({ element: markerElement })
-          .setLngLat(property.coordinates as [number, number])
-          .addTo(map.current!);
-
-        markers.push(marker);
-
-        // Add click listener to marker
-        markerElement.addEventListener('click', (e) => {
-          e.stopPropagation();
-          setSelectedProperty(property);
-          
-          // Update marker styles
-          markers.forEach((m, index) => {
-            const element = m.getElement();
-            const isSelected = mockProperties[index].id === property.id;
-            element.className = `
-              px-2 py-1 rounded-full text-sm font-semibold cursor-pointer transition-all duration-200 shadow-md
-              ${isSelected 
-                ? 'bg-foreground text-background scale-110 z-10' 
-                : 'bg-background text-foreground border border-border hover:scale-105'
-              }
-            `;
-          });
+        // Update all markers to show selection state
+        markersRef.current.forEach((m, index) => {
+          const isSelected = mockProperties[index].id === property.id;
+          m.setIcon(createPriceMarker(mockProperties[index].price, isSelected));
         });
       });
+    });
 
-      // Add click listener to map to close popup
-      map.current.on('click', (e) => {
-        // Check if click was on a marker
-        const features = map.current!.queryRenderedFeatures(e.point);
-        if (features.length === 0) {
-          setSelectedProperty(null);
-        }
+    // Add click listener to map to close popup
+    map.current.on('click', () => {
+      setSelectedProperty(null);
+      // Reset all markers to unselected state
+      markersRef.current.forEach((m, index) => {
+        m.setIcon(createPriceMarker(mockProperties[index].price, false));
       });
-
-    } catch (error) {
-      console.error('Error initializing map:', error);
-    }
+    });
 
     // Cleanup
     return () => {
       map.current?.remove();
+      markersRef.current = [];
     };
-  }, [mapboxToken]);
-
-  if (!mapboxToken) {
-    return (
-      <div className={`relative ${className}`}>
-        <div className="w-full h-full bg-muted flex items-center justify-center">
-          <MapboxTokenInput onTokenSubmit={setMapboxToken} />
-        </div>
-      </div>
-    );
-  }
+  }, []);
 
   return (
     <div className={`relative ${className}`}>
       <div ref={mapContainer} className="w-full h-full" />
       
-      {/* Airbnb-style search overlay */}
+      {/* Search overlay */}
       <SearchOverlay />
       
       {/* Property count overlay */}
