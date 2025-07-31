@@ -15,6 +15,10 @@ interface LocationSuggestion {
     main_text: string;
     secondary_text: string;
   };
+  coordinates?: {
+    lat: number;
+    lng: number;
+  };
 }
 
 export default function Search() {
@@ -32,35 +36,36 @@ export default function Search() {
       return;
     }
 
-    // For now, we'll create mock suggestions. In production, you'd use Google Places API
-    const mockSuggestions: LocationSuggestion[] = [
-      {
-        place_id: "1",
-        description: `${query}, NSW, Australia`,
-        structured_formatting: {
-          main_text: query,
-          secondary_text: "NSW, Australia"
-        }
-      },
-      {
-        place_id: "2", 
-        description: `${query}, VIC, Australia`,
-        structured_formatting: {
-          main_text: query,
-          secondary_text: "VIC, Australia"
-        }
-      },
-      {
-        place_id: "3",
-        description: `${query}, QLD, Australia`,
-        structured_formatting: {
-          main_text: query,
-          secondary_text: "QLD, Australia"
-        }
+    try {
+      // Use Nominatim (OpenStreetMap) geocoding API for real location suggestions
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(query)}`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch locations');
       }
-    ];
-    
-    setSuggestions(mockSuggestions);
+      
+      const data = await response.json();
+      
+      const locationSuggestions: LocationSuggestion[] = data.map((item: any, index: number) => ({
+        place_id: item.place_id?.toString() || `${index}`,
+        description: item.display_name,
+        structured_formatting: {
+          main_text: item.name || item.display_name.split(',')[0],
+          secondary_text: item.display_name.split(',').slice(1).join(',').trim()
+        },
+        coordinates: {
+          lat: parseFloat(item.lat),
+          lng: parseFloat(item.lon)
+        }
+      }));
+      
+      setSuggestions(locationSuggestions);
+    } catch (error) {
+      console.error('Error searching for locations:', error);
+      setSuggestions([]);
+    }
   };
 
   const handleSearchChange = (value: string) => {
@@ -85,13 +90,11 @@ export default function Search() {
     setSearchTerm(suggestion.description);
     setShowSuggestions(false);
     
-    // Mock coordinates - in production, you'd geocode the location
-    const mockCoordinates = {
-      lat: suggestion.structured_formatting.secondary_text.includes("NSW") ? -33.8688 : -37.8136,
-      lng: suggestion.structured_formatting.secondary_text.includes("NSW") ? 151.2093 : 144.9631
-    };
+    // Use the real coordinates from the geocoding API
+    if (suggestion.coordinates) {
+      setSelectedLocation(suggestion.coordinates);
+    }
     
-    setSelectedLocation(mockCoordinates);
     // Clear search results since we're starting fresh with a new location
     setSearchResults([]);
   };
