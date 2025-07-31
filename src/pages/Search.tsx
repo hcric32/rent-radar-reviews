@@ -1,62 +1,149 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Search as SearchIcon, Filter, Star, MapPin, List } from "lucide-react";
 import { MapView } from "@/components/MapView";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
-const mockSearchResults = [
-  {
-    id: 1,
-    name: "Sunny Downtown Loft",
-    address: "123 Broadway, New York, NY",
-    rating: 4.3,
-    reviewCount: 18,
-    price: "$2,800/month",
-    type: "Loft",
-    highlights: ["Great location", "Responsive landlord", "Clean building"]
-  },
-  {
-    id: 2,
-    name: "Cozy Brooklyn Apartment",
-    address: "456 Atlantic Ave, Brooklyn, NY",
-    rating: 3.9,
-    reviewCount: 12,
-    price: "$2,200/month",
-    type: "Apartment",
-    highlights: ["Quiet neighborhood", "Good value", "Pet-friendly"]
-  },
-  {
-    id: 3,
-    name: "Modern Studio",
-    address: "789 Park Ave, New York, NY",
-    rating: 4.6,
-    reviewCount: 25,
-    price: "$1,950/month",
-    type: "Studio",
-    highlights: ["Newly renovated", "Great amenities", "Excellent management"]
-  }
-];
+interface LocationSuggestion {
+  place_id: string;
+  description: string;
+  structured_formatting: {
+    main_text: string;
+    secondary_text: string;
+  };
+}
 
 export default function Search() {
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"map" | "list">("map");
+  const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<{lat: number; lng: number} | null>(null);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+
+  const searchForLocations = async (query: string) => {
+    if (query.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+
+    // For now, we'll create mock suggestions. In production, you'd use Google Places API
+    const mockSuggestions: LocationSuggestion[] = [
+      {
+        place_id: "1",
+        description: `${query}, NSW, Australia`,
+        structured_formatting: {
+          main_text: query,
+          secondary_text: "NSW, Australia"
+        }
+      },
+      {
+        place_id: "2", 
+        description: `${query}, VIC, Australia`,
+        structured_formatting: {
+          main_text: query,
+          secondary_text: "VIC, Australia"
+        }
+      },
+      {
+        place_id: "3",
+        description: `${query}, QLD, Australia`,
+        structured_formatting: {
+          main_text: query,
+          secondary_text: "QLD, Australia"
+        }
+      }
+    ];
+    
+    setSuggestions(mockSuggestions);
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    searchTimeoutRef.current = setTimeout(() => {
+      searchForLocations(value);
+      setShowSuggestions(true);
+    }, 300);
+  };
+
+  const handleLocationSelect = (suggestion: LocationSuggestion) => {
+    setSearchTerm(suggestion.description);
+    setShowSuggestions(false);
+    
+    // Mock coordinates - in production, you'd geocode the location
+    const mockCoordinates = {
+      lat: suggestion.structured_formatting.secondary_text.includes("NSW") ? -33.8688 : -37.8136,
+      lng: suggestion.structured_formatting.secondary_text.includes("NSW") ? 151.2093 : 144.9631
+    };
+    
+    setSelectedLocation(mockCoordinates);
+    // Clear search results since we're starting fresh with a new location
+    setSearchResults([]);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="h-screen flex flex-col">
       {/* Search Header */}
       <div className="p-4 border-b bg-background">
         <div className="flex gap-2 max-w-2xl">
-          <div className="relative flex-1">
-            <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by location, property name, or landlord..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+          <Popover open={showSuggestions} onOpenChange={setShowSuggestions}>
+            <PopoverTrigger asChild>
+              <div className="relative flex-1">
+                <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by location, property name, or landlord..."
+                  value={searchTerm}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </PopoverTrigger>
+            <PopoverContent className="w-[400px] p-0" align="start">
+              <Command>
+                <CommandList>
+                  {suggestions.length === 0 ? (
+                    <CommandEmpty>No locations found.</CommandEmpty>
+                  ) : (
+                    <CommandGroup>
+                      {suggestions.map((suggestion) => (
+                        <CommandItem
+                          key={suggestion.place_id}
+                          onSelect={() => handleLocationSelect(suggestion)}
+                          className="cursor-pointer"
+                        >
+                          <MapPin className="mr-2 h-4 w-4" />
+                          <div>
+                            <div className="font-medium">{suggestion.structured_formatting.main_text}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {suggestion.structured_formatting.secondary_text}
+                            </div>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  )}
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
           <Button variant="outline" size="icon">
             <Filter className="h-4 w-4" />
           </Button>
@@ -80,52 +167,66 @@ export default function Search() {
       {/* Content */}
       <div className="flex-1">
         {viewMode === "map" ? (
-          <MapView className="h-full" />
+          <MapView 
+            className="h-full" 
+            center={selectedLocation || undefined}
+            properties={searchResults}
+          />
         ) : (
           <div className="h-full overflow-auto p-4">
             <div className="max-w-4xl space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold">
-                  {mockSearchResults.length} properties found
+                  {searchResults.length} properties found
                 </h2>
               </div>
 
-              {mockSearchResults.map((property) => (
-                <Card key={property.id} className="hover:shadow-md transition-shadow cursor-pointer">
-                  <CardHeader className="pb-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-lg">{property.name}</CardTitle>
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                          <MapPin className="h-3 w-3" />
-                          {property.address}
+              {searchResults.length === 0 ? (
+                <div className="text-center py-12">
+                  <MapPin className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No properties yet</h3>
+                  <p className="text-muted-foreground">
+                    Search for a location to see properties in that area.
+                  </p>
+                </div>
+              ) : (
+                searchResults.map((property) => (
+                  <Card key={property.id} className="hover:shadow-md transition-shadow cursor-pointer">
+                    <CardHeader className="pb-3">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="text-lg">{property.name}</CardTitle>
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                            <MapPin className="h-3 w-3" />
+                            {property.address}
+                          </div>
                         </div>
+                        <Badge variant="secondary">{property.type}</Badge>
                       </div>
-                      <Badge variant="secondary">{property.type}</Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-4 mb-3">
-                      <div className="flex items-center gap-1">
-                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                        <span className="font-medium">{property.rating}</span>
-                        <span className="text-sm text-muted-foreground">
-                          ({property.reviewCount} reviews)
-                        </span>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-4 mb-3">
+                        <div className="flex items-center gap-1">
+                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                          <span className="font-medium">{property.rating}</span>
+                          <span className="text-sm text-muted-foreground">
+                            ({property.reviewCount} reviews)
+                          </span>
+                        </div>
+                        <span className="font-semibold text-primary">{property.price}</span>
                       </div>
-                      <span className="font-semibold text-primary">{property.price}</span>
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-2">
-                      {property.highlights.map((highlight, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          {highlight}
-                        </Badge>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      
+                      <div className="flex flex-wrap gap-2">
+                        {property.highlights.map((highlight, index) => (
+                          <Badge key={index} variant="outline" className="text-xs">
+                            {highlight}
+                          </Badge>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </div>
           </div>
         )}
