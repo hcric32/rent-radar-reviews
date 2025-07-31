@@ -112,46 +112,36 @@ export default function Search() {
       {/* Search Header */}
       <div className="p-4 border-b bg-background">
         <div className="flex gap-2 max-w-2xl">
-          <Popover open={showSuggestions} onOpenChange={setShowSuggestions}>
-            <PopoverTrigger asChild>
-              <div className="relative flex-1">
-                <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by location, property name, or landlord..."
-                  value={searchTerm}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  className="pl-10"
-                />
+          <div className="relative flex-1">
+            <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+            <Input
+              placeholder="Search by location, property name, or landlord..."
+              value={searchTerm}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="pl-10"
+            />
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto">
+                {suggestions.map((suggestion) => (
+                  <div
+                    key={suggestion.place_id}
+                    onClick={() => handleLocationSelect(suggestion)}
+                    className="px-3 py-2 hover:bg-accent cursor-pointer border-b last:border-b-0"
+                  >
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <div className="font-medium">{suggestion.structured_formatting.main_text}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {suggestion.structured_formatting.secondary_text}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </PopoverTrigger>
-            <PopoverContent className="w-[400px] p-0" align="start">
-              <Command>
-                <CommandList>
-                  {suggestions.length === 0 ? (
-                    <CommandEmpty>No locations found.</CommandEmpty>
-                  ) : (
-                    <CommandGroup>
-                      {suggestions.map((suggestion) => (
-                        <CommandItem
-                          key={suggestion.place_id}
-                          onSelect={() => handleLocationSelect(suggestion)}
-                          className="cursor-pointer"
-                        >
-                          <MapPin className="mr-2 h-4 w-4" />
-                          <div>
-                            <div className="font-medium">{suggestion.structured_formatting.main_text}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {suggestion.structured_formatting.secondary_text}
-                            </div>
-                          </div>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  )}
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
+            )}
+          </div>
           <Button variant="outline" size="icon">
             <Filter className="h-4 w-4" />
           </Button>
