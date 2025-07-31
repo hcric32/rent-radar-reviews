@@ -70,10 +70,15 @@ export default function Search() {
       clearTimeout(searchTimeoutRef.current);
     }
     
-    searchTimeoutRef.current = setTimeout(() => {
-      searchForLocations(value);
-      setShowSuggestions(true);
-    }, 300);
+    if (value.length >= 3) {
+      searchTimeoutRef.current = setTimeout(() => {
+        searchForLocations(value);
+        setShowSuggestions(true);
+      }, 300);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
   };
 
   const handleLocationSelect = (suggestion: LocationSuggestion) => {
