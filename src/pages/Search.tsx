@@ -37,18 +37,28 @@ export default function Search() {
     }
 
     try {
-      // Use Nominatim (OpenStreetMap) geocoding API for real location suggestions
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(query)}`
-      );
+      // Use multiple search strategies for better address matching
+      const searches = [
+        // Main search with exact query
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=3&q=${encodeURIComponent(query)}`),
+        // Search with extratags for more detailed results
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&extratags=1&limit=2&q=${encodeURIComponent(query)}`)
+      ];
+
+      const responses = await Promise.all(searches);
+      const results = await Promise.all(responses.map(r => r.json()));
       
-      if (!response.ok) {
-        throw new Error('Failed to fetch locations');
-      }
-      
-      const data = await response.json();
-      
-      const locationSuggestions: LocationSuggestion[] = data.map((item: any, index: number) => ({
+      // Combine and deduplicate results
+      const combined = [...results[0], ...results[1]];
+      const seen = new Set();
+      const unique = combined.filter(item => {
+        const key = `${item.lat}-${item.lon}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      const locationSuggestions: LocationSuggestion[] = unique.slice(0, 5).map((item: any, index: number) => ({
         place_id: item.place_id?.toString() || `${index}`,
         description: item.display_name,
         structured_formatting: {
