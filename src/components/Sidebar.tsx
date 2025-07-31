@@ -8,10 +8,13 @@ import {
   User, 
   Settings,
   Menu,
-  X 
+  X,
+  LogOut
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 const navigationItems = [
   { icon: Home, label: "Home", href: "/" },
@@ -28,6 +31,25 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen, onToggle }: SidebarProps) {
+  const { user, signOut } = useAuth();
+  const { toast } = useToast();
+
+  const handleSignOut = async () => {
+    const { error } = await signOut();
+    if (error) {
+      toast({
+        title: 'Error signing out',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Signed out successfully',
+        description: 'See you next time!',
+      });
+    }
+  };
+
   return (
     <>
       {/* Mobile Overlay */}
@@ -88,11 +110,21 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
             </ul>
           </nav>
 
-          {/* Footer */}
-          <div className="p-4 border-t">
-            <p className="text-sm text-muted-foreground text-center">
-              Empowering renters with transparency
-            </p>
+          {/* User Info & Sign Out */}
+          <div className="p-4 border-t space-y-3">
+            <div className="text-sm">
+              <p className="font-medium truncate">{user?.email}</p>
+              <p className="text-muted-foreground text-xs">Signed in</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSignOut}
+              className="w-full"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
           </div>
         </div>
       </div>
