@@ -97,12 +97,15 @@ export default function Search() {
   };
 
   const handleLocationSelect = (suggestion: LocationSuggestion) => {
+    console.log('Selected location:', suggestion);
+    console.log('Coordinates:', suggestion.coordinates);
     setSearchTerm(suggestion.description);
     setShowSuggestions(false);
     
     // Use the real coordinates from the geocoding API
     if (suggestion.coordinates) {
       setSelectedLocation(suggestion.coordinates);
+      console.log('Set selected location to:', suggestion.coordinates);
     }
     
     // Clear search results since we're starting fresh with a new location

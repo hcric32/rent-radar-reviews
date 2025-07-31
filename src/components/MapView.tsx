@@ -117,6 +117,10 @@ export function MapView({ className, center = { lat: 40.7128, lng: -74.006 }, pr
   const exactLocationMarkerRef = useRef<any>(null);
 
   useEffect(() => {
+    console.log('MapView useEffect triggered');
+    console.log('Center:', center);
+    console.log('ExactLocation:', exactLocation);
+    
     if (!mapContainer.current || !apiKey) return;
 
     const loader = new Loader({
@@ -160,6 +164,7 @@ export function MapView({ className, center = { lat: 40.7128, lng: -74.006 }, pr
 
       // Add red pin for exact location if provided
       if (exactLocation) {
+        console.log('Creating red pin at:', exactLocation);
         exactLocationMarkerRef.current = new (window as any).google.maps.Marker({
           position: exactLocation,
           map: map.current,
@@ -174,6 +179,9 @@ export function MapView({ className, center = { lat: 40.7128, lng: -74.006 }, pr
             anchor: new (window as any).google.maps.Point(12, 36)
           }
         });
+        console.log('Red pin created successfully');
+      } else {
+        console.log('No exactLocation provided, skipping red pin');
       }
 
       // Add property markers
