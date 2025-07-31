@@ -105,14 +105,16 @@ interface MapViewProps {
   className?: string;
   center?: { lat: number; lng: number };
   properties?: Property[];
+  exactLocation?: { lat: number; lng: number };
 }
 
-export function MapView({ className, center = { lat: 40.7128, lng: -74.006 }, properties = [] }: MapViewProps) {
+export function MapView({ className, center = { lat: 40.7128, lng: -74.006 }, properties = [], exactLocation }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<any>(null);
   const apiKey = 'AIzaSyBQG_W44a-Mxc8yIP9me5tms3tMj50Oez4';
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const markersRef = useRef<any[]>([]);
+  const exactLocationMarkerRef = useRef<any>(null);
 
   useEffect(() => {
     if (!mapContainer.current || !apiKey) return;
@@ -126,10 +128,14 @@ export function MapView({ className, center = { lat: 40.7128, lng: -74.006 }, pr
     loader.load().then(() => {
       if (!mapContainer.current) return;
 
+      // Determine map center and zoom based on exactLocation
+      const mapCenter = exactLocation || center;
+      const mapZoom = exactLocation ? 17 : 12; // Zoom closer for exact locations
+
       // Initialize Google Map
       map.current = new (window as any).google.maps.Map(mapContainer.current, {
-        center: center,
-        zoom: 12,
+        center: mapCenter,
+        zoom: mapZoom,
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: false,
@@ -145,6 +151,30 @@ export function MapView({ className, center = { lat: 40.7128, lng: -74.006 }, pr
       // Clear existing markers
       markersRef.current.forEach(marker => marker.setMap(null));
       markersRef.current = [];
+
+      // Clear existing exact location marker
+      if (exactLocationMarkerRef.current) {
+        exactLocationMarkerRef.current.setMap(null);
+        exactLocationMarkerRef.current = null;
+      }
+
+      // Add red pin for exact location if provided
+      if (exactLocation) {
+        exactLocationMarkerRef.current = new (window as any).google.maps.Marker({
+          position: exactLocation,
+          map: map.current,
+          icon: {
+            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="36" viewBox="0 0 24 36">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#ef4444"/>
+                <circle cx="12" cy="9" r="3" fill="white"/>
+              </svg>
+            `)}`,
+            scaledSize: new (window as any).google.maps.Size(24, 36),
+            anchor: new (window as any).google.maps.Point(12, 36)
+          }
+        });
+      }
 
       // Add property markers
       properties.forEach((property) => {
@@ -217,7 +247,7 @@ export function MapView({ className, center = { lat: 40.7128, lng: -74.006 }, pr
       markersRef.current.forEach(marker => marker.setMap(null));
       markersRef.current = [];
     };
-  }, [apiKey, center, properties]);
+  }, [apiKey, center, properties, exactLocation]);
 
   return (
     <div className={`relative ${className}`}>

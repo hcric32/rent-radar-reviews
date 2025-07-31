@@ -178,6 +178,7 @@ export default function Search() {
           <MapView 
             className="h-full" 
             center={selectedLocation || undefined}
+            exactLocation={selectedLocation || undefined}
             properties={searchResults}
           />
         ) : (
